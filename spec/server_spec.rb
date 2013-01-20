@@ -38,17 +38,43 @@ describe KnifeDNS::Server do
   end
 
   before :all do
-    @test_config = {'knife_file' => File.dirname(__FILE__)+'/knife/test_knife.rb', 'env' => {'SHARED_PROP' => 'test'}}
-    @test2_config = {'knife_file' => File.dirname(__FILE__)+'/knife/test2_knife.rb', 'env' => {'SHARED_PROP' => 'test2', 'UNSHARED_PROP' => 'unshared'}}
+    @default_config = Chef::Config.configuration
+    @test_config = {'knife_file' => File.dirname(__FILE__)+'/knife/test_knife.rb'}
+    @test2_config = {'knife_file' => File.dirname(__FILE__)+'/knife/test2_knife.rb', 'env' => {'ENV_PROP' => 'test2'}}
   end
 
   after :each do
     stop_server
+    Chef::Config.configuration = @default_config.dup
   end
 
-  it "should load chef config"
-  it "should properly reset chef config between loads"
-  it "should properly reset ENV between chef config loads"
+  it "should load chef config" do
+    start_server 'test' => @test_config
+    @server.load_chef_config @test_config
+    Chef::Config.test_prop.should == true
+  end
+
+  it "should properly reset chef config between loads" do
+    start_server 'test' => @test_config, 'test2' => @test2_config
+    @server.load_chef_config @test_config
+    Chef::Config.test_prop.should == true
+    Chef::Config.shared_prop.should == 'test_knife'
+
+    @server.load_chef_config @test2_config
+    Chef::Config.test_prop.should be_nil
+    Chef::Config.test2_prop.should == true
+    Chef::Config.shared_prop.should == 'test2_knife'
+  end
+
+  it "should properly reset ENV between chef config loads" do
+    start_server 'test' => @test_config, 'test2' => @test2_config
+    @server.load_chef_config @test_config
+    @server.load_chef_config @test2_config
+    Chef::Config.env_prop.should == 'test2'
+
+    @server.load_chef_config @test_config
+    Chef::Config.env_prop.should be_nil
+  end
 
   it "should resolve a name like ROLE.CONFIG.chef" do
     start_server 'test' => @test_config, 'test2' => @test2_config

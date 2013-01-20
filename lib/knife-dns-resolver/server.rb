@@ -38,7 +38,7 @@ module KnifeDNS
     end
 
     def load_chef_config config
-      @default_config ||= Chef::Config.hash_dup
+      @default_config ||= Chef::Config.configuration
       @original_env ||= ENV.to_hash
       @cached_configs ||= {}
 
@@ -47,15 +47,13 @@ module KnifeDNS
       if cached_config
         Chef::Config.configuration = cached_config
       else
-        Chef::Config.configuration = @default_config
-
-        ENV.replace(@original_env)
+        Chef::Config.configuration = @default_config.dup
         (config['env'] || []).each do |key, val|
           ENV[key] = val
         end
-
         Chef::Config.from_file(config['knife_file'])
         @cached_configs[cache_key] = Chef::Config.configuration
+        ENV.replace(@original_env)
       end
 
       nil
