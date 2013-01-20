@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+
+require 'yaml'
+require 'knife-dns-resolver/server'
+
+# Load configs
+config_path = "#{ENV['HOME']}/.knife-dns-resolver.yml"
+unless File.exist?(config_path)
+  raise "Could not find config file: #{config_path}"
+end
+config = YAML.load_file(config_path)
+
+# Start server
+dns = KnifeDNS::Server.new 20570, config
+dns.run
+Thread.stop
