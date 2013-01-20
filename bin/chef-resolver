@@ -24,7 +24,7 @@ if ARGV[0] == 'install'
       f.write <<-DEFAULT_CONFIG
 # # Access with role.config_name.chef
 # config_name:
-#   knife_path: /full/path/to/knife.rb
+#   knife_file: /full/path/to/knife.rb
 #   env: # optional
 #     CHEF_ENV: production
 DEFAULT_CONFIG
