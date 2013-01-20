@@ -3,7 +3,7 @@
 require 'yaml'
 require 'tempfile'
 require 'fileutils'
-require 'chef-resolver/server'
+require 'chef/resolver_server'
 
 config_path = "#{ENV['HOME']}/.chef-resolver.yml"
 launch_agent_path = "#{ENV['HOME']}/Library/LaunchAgents/com.chromedshark.chef-resolver.plist"
