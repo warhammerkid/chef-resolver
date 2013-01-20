@@ -17,7 +17,7 @@ describe KnifeDNS::Server do
 
   def stub_search role, nodes
     query = double('Chef::Search::Query')
-    query.should_receive(:search).with('node', "role:#{role}").and_return(nodes)
+    query.should_receive(:search).with('node', "role:#{role}").and_return([nodes, 0, nodes.length])
     Chef::Search::Query.should_receive(:new) { query }
   end
 

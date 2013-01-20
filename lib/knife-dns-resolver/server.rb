@@ -15,6 +15,7 @@ module KnifeDNS
     end
 
     def resolve_host host
+      puts "Resolving: #{host}"
       @root_domains.each do |domain, config|
         next unless host.subdomain_of?(domain)
         role_part = host.to_s.split('.')[0]
@@ -30,11 +31,16 @@ module KnifeDNS
     def query_knife role, index, config
       load_chef_config config
 
-      nodes = Chef::Search::Query.new.search('node', "role:#{role}")
-      return nil if index >= nodes.length
-
-      node = nodes[index]
-      return node.has_key?('ec2') ? node['ec2']['public_ipv4'] : node['ipaddress']
+      puts "\tLooking up role #{role}..."
+      nodes = Chef::Search::Query.new.search('node', "role:#{role}")[0]
+      if index >= nodes.length
+        puts "\tIndex beyond bounds: #{index} vs #{nodes.length}"
+        return nil
+      else
+        node = nodes[index]
+        puts "\tFound node: #{node.name}"
+        return node.has_key?('ec2') ? node['ec2']['public_ipv4'] : node['ipaddress']
+      end
     end
 
     def load_chef_config config
