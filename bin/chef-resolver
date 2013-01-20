@@ -66,11 +66,12 @@ port #{dns_port}
 RESOLVER
   resolver.close
   begin
+    FileUtils.mkdir '/etc/resolver', :mode => 0755 unless File.exist?('/etc/resolver')
     FileUtils.cp(resolver.path, '/etc/resolver/chef')
   rescue
-    cmd = "sudo cp #{resolver.path} /etc/resolver/chef"
-    puts cmd
-    `#{cmd}`
+    puts "Installing system configuration files as root"
+    `sudo mkdir -m 0755 /etc/resolver 2>/dev/null`
+    `sudo cp #{resolver.path} /etc/resolver/chef`
   end
   resolver.unlink
 
