@@ -1,16 +1,16 @@
 # -*- encoding: utf-8 -*-
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'knife-dns-resolver/version'
+require 'chef/resolver/version'
 
 Gem::Specification.new do |gem|
-  gem.name          = "knife-dns-resolver"
-  gem.version       = KnifeDNS::VERSION
+  gem.name          = "chef-resolver"
+  gem.version       = Chef::Resolver::VERSION
   gem.authors       = ["Stephen Augenstein"]
   gem.email         = ["perl.programmer@gmail.com"]
-  gem.description   = %q{A DNS resolver for Mac OS X that does knife role queries to resolve hostnames}
+  gem.description   = %q{A DNS resolver for Mac OS X that does role queries to resolve hostnames}
   gem.summary       = %q{Instead of doing knife search node role every time you want to look up a server, simply ssh into ROLE_NAME-##.chef}
-  gem.homepage      = "https://github.com/warhammerkid/knife-dns-resolver"
+  gem.homepage      = "https://github.com/warhammerkid/chef-resolver"
 
   gem.add_dependency('chef', '~> 10.16')
 

@@ -2,8 +2,8 @@ require 'resolv'
 require 'socket'
 require 'chef'
 
-module KnifeDNS
-  class Server
+class Chef
+  class ResolverServer
     def initialize(port, config)
       @server = UDPSocket.open
       @server.bind "127.0.0.1", port
@@ -20,15 +20,15 @@ module KnifeDNS
         next unless host.subdomain_of?(domain)
         role_part = host.to_s.split('.')[0]
         if role_part =~ /^(.+)-(\d+)$/
-          return query_knife $1, $2.to_i - 1, config
+          return query_chef $1, $2.to_i - 1, config
         else
-          return query_knife role_part, 0, config
+          return query_chef role_part, 0, config
         end
       end
       return nil
     end
 
-    def query_knife role, index, config
+    def query_chef role, index, config
       load_chef_config config
 
       puts "\tLooking up role #{role}..."
@@ -38,7 +38,7 @@ module KnifeDNS
         return nil
       else
         node = nodes[index]
-        puts "\tFound node: #{node.name}"
+        puts "\tFound node: #{node['name']}"
         return node.has_key?('ec2') ? node['ec2']['public_ipv4'] : node['ipaddress']
       end
     end

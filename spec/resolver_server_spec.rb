@@ -1,12 +1,12 @@
 require 'spec_helper.rb'
 require 'resolv'
-require 'knife-dns-resolver/server'
+require 'chef/resolver_server'
 
-describe KnifeDNS::Server do
+describe Chef::ResolverServer do
   TESTING_DNS_PORT = 20571
 
   def start_server config
-    @server = KnifeDNS::Server.new TESTING_DNS_PORT, config
+    @server = Chef::ResolverServer.new TESTING_DNS_PORT, config
     @server.run
   end
 
@@ -17,6 +17,7 @@ describe KnifeDNS::Server do
 
   def stub_search role, nodes
     query = double('Chef::Search::Query')
+    nodes.each_with_index {|n, i| n['name'] = "node #{i}" }
     query.should_receive(:search).with('node', "role:#{role}").and_return([nodes, 0, nodes.length])
     Chef::Search::Query.should_receive(:new) { query }
   end
