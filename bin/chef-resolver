@@ -101,14 +101,8 @@ elsif ARGV[0] == 'uninstall'
   exit 0
 end
 
-# Load configs
-unless File.exist?(config_path)
-  raise "Could not find config file: #{config_path}"
-end
-config = YAML.load_file(config_path)
-
 # Start server
 Thread.abort_on_exception = true
-dns = Chef::ResolverServer.new dns_port, config
-dns.run
+dns = Chef::ResolverServer.new dns_port, config_path
+dns.start
 Thread.stop

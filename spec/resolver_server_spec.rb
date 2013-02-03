@@ -5,9 +5,8 @@ require 'chef/resolver_server'
 describe Chef::ResolverServer do
   TESTING_DNS_PORT = 20571
 
-  def start_server config
+  def new_server config
     @server = Chef::ResolverServer.new TESTING_DNS_PORT, config
-    @server.run
   end
 
   def stop_server
@@ -40,8 +39,8 @@ describe Chef::ResolverServer do
 
   before :all do
     @default_config = Chef::Config.configuration
-    @test_config = {'knife_file' => File.dirname(__FILE__)+'/knife/test_knife.rb'}
-    @test2_config = {'knife_file' => File.dirname(__FILE__)+'/knife/test2_knife.rb', 'env' => {'ENV_PROP' => 'test2'}}
+    @test_config = {'knife_file' => File.dirname(__FILE__)+'/files/test_knife.rb'}
+    @test2_config = {'knife_file' => File.dirname(__FILE__)+'/files/test2_knife.rb', 'env' => {'ENV_PROP' => 'test2'}}
   end
 
   after :each do
@@ -50,13 +49,13 @@ describe Chef::ResolverServer do
   end
 
   it "should load chef config" do
-    start_server 'test' => @test_config
+    new_server 'test' => @test_config
     @server.load_chef_config @test_config
     Chef::Config.test_prop.should == true
   end
 
   it "should properly reset chef config between loads" do
-    start_server 'test' => @test_config, 'test2' => @test2_config
+    new_server 'test' => @test_config, 'test2' => @test2_config
     @server.load_chef_config @test_config
     Chef::Config.test_prop.should == true
     Chef::Config.shared_prop.should == 'test_knife'
@@ -68,7 +67,7 @@ describe Chef::ResolverServer do
   end
 
   it "should properly reset ENV between chef config loads" do
-    start_server 'test' => @test_config, 'test2' => @test2_config
+    new_server 'test' => @test_config, 'test2' => @test2_config
     @server.load_chef_config @test_config
     @server.load_chef_config @test2_config
     Chef::Config.env_prop.should == 'test2'
@@ -78,32 +77,48 @@ describe Chef::ResolverServer do
   end
 
   it "should resolve a name like ROLE.CONFIG.chef" do
-    start_server 'test' => @test_config, 'test2' => @test2_config
+    new_server 'test' => @test_config, 'test2' => @test2_config
+    @server.start
     stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.test2.chef').should == '1.1.1.1'
   end
 
   it "should resolve a name like ROLE-INDEX.CONFIG.chef" do
-    start_server 'test' => @test_config
+    new_server 'test' => @test_config
+    @server.start
     stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}, {'ipaddress' => '2.2.2.2'}, {'ipaddress' => '3.3.3.3'}, {'ipaddress' => '4.4.4.4'}]
     getaddress('test_role-3.test.chef').should == '3.3.3.3'
   end
 
   it "should resolve a name like ROLE.chef if only one config" do
     # Should fail with multiple configs
-    start_server 'test' => @test_config, 'test2' => @test2_config
+    new_server 'test' => @test_config, 'test2' => @test2_config
+    @server.start
     expect { getaddress('test_role.chef') }.to raise_error(Resolv::ResolvError)
     stop_server
 
     # Should succeed with one config
-    start_server 'test' => @test_config
+    new_server 'test' => @test_config
+    @server.start
     stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.chef').should == '1.1.1.1'
   end
 
   it "should resolve ec2 node public ip addresses properly" do
-    start_server 'test' => @test_config
+    new_server 'test' => @test_config
+    @server.start
     stub_search 'test_role', [{'ec2' => {'public_ipv4' => '1.1.1.1'}, 'ipaddress' => '0.0.0.0'}]
     getaddress('test_role.chef').should == '1.1.1.1'
   end
+
+  it "should support a file path" do
+    path = File.dirname(__FILE__)+'/files/changing_config.yml'
+    File.open(path, 'w') {|f| f.write({'test' => @test_config}.to_yaml)}
+    new_server path
+    @server.start
+    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    getaddress('test_role.chef').should == '1.1.1.1'
+  end
+
+  it "should reload configs on file change"
 end
