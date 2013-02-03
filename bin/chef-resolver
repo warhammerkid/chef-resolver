@@ -103,6 +103,6 @@ end
 
 # Start server
 Thread.abort_on_exception = true
-dns = Chef::ResolverServer.new dns_port, config_path
+dns = Chef::ResolverServer.new dns_port, config_path, true
 dns.start
 Thread.stop
