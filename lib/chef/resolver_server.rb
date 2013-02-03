@@ -1,15 +1,17 @@
 require 'resolv'
 require 'socket'
 require 'chef'
+require 'chef/resolver/file_watcher'
 
 class Chef
   class ResolverServer
     IPv4 = "127.0.0.1".freeze
 
-    def initialize port, config
+    def initialize port, config, watch = false
       @port = port
       if config.is_a?(String)
         load_config_from_file config
+        start_file_watcher if watch
       else
         load_config config
       end
@@ -23,7 +25,7 @@ class Chef
 
     def stop
       @thread.kill if @thread
-      @listener.stop if @listener
+      @watcher.stop if @watcher
     end
 
     def load_chef_config config
@@ -56,15 +58,30 @@ class Chef
       @root_domains[Resolv::DNS::Name.create("chef.")] = config[domains[0]] if domains.length == 1
     end
 
-    def load_config_from_file config_path, listen = false
+    def load_config_from_file config_path
       raise "Could not find config file: #{config_path}" unless File.exist?(config_path)
-      load_config YAML.load_file(config_path)
+
+      # Parse config from file and save paths to all files we might want to track
+      @config_path = File.expand_path(config_path)
+      @tracked_files = [@config_path]
+      load_config YAML.load_file(@config_path)
+      @root_domains.each {|d, c| @tracked_files << File.expand_path(c['knife_file'])}
+    end
+
+    def start_file_watcher
+      @watcher = Resolver::FileWatcher.new @tracked_files
+      @watcher.watch do |path|
+        @cached_configs = nil # Reset chef configs
+        load_config_from_file @config_path if path == @config_path
+        @watcher.filenames = @tracked_files
+      end
     end
 
     def resolve_host host
       puts "Resolving: #{host}"
       @root_domains.each do |domain, config|
         next unless host.subdomain_of?(domain)
+        next unless host.length - 1 == domain.length # Make sure the subdomain is the role part
         role_part = host.to_s.split('.')[0]
         if role_part =~ /^(.+)-(\d+)$/
           return query_chef $1, $2.to_i - 1, config

@@ -5,8 +5,8 @@ require 'chef/resolver_server'
 describe Chef::ResolverServer do
   TESTING_DNS_PORT = 20571
 
-  def new_server config
-    @server = Chef::ResolverServer.new TESTING_DNS_PORT, config
+  def new_server config, watch = false
+    @server = Chef::ResolverServer.new TESTING_DNS_PORT, config, watch
   end
 
   def stop_server
@@ -104,6 +104,12 @@ describe Chef::ResolverServer do
     getaddress('test_role.chef').should == '1.1.1.1'
   end
 
+  it "should not resolve ROLE.CONFIG.chef without a matching config" do
+    new_server 'test' => @test_config
+    @server.start
+    expect { getaddress('test_role.test2.chef') }.to raise_error(Resolv::ResolvError)
+  end
+
   it "should resolve ec2 node public ip addresses properly" do
     new_server 'test' => @test_config
     @server.start
@@ -120,5 +126,39 @@ describe Chef::ResolverServer do
     getaddress('test_role.chef').should == '1.1.1.1'
   end
 
-  it "should reload configs on file change"
+  it "should reload configs on config change" do
+    path = File.dirname(__FILE__)+'/files/changing_config.yml'
+    File.open(path, 'w') {|f| f.write({'test' => @test_config}.to_yaml)}
+    new_server path, true
+    @server.start
+
+    sleep 2
+    File.open(path, 'w') {|f| f.write({'test2' => @test2_config}.to_yaml)}
+    sleep 2
+
+    expect { getaddress('test_role.test.chef') }.to raise_error(Resolv::ResolvError)
+    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    getaddress('test_role.test2.chef').should == '1.1.1.1'
+  end
+
+  it "should reload configs on knife change" do
+    config_path = File.dirname(__FILE__)+'/files/changing_config.yml'
+    knife_path  = File.dirname(__FILE__)+'/files/changing_knife.rb'
+    File.open(config_path, 'w') {|f| f.write({'changing' => {'knife_file' => knife_path}}.to_yaml)}
+    File.open(knife_path, 'w') {|f| f.write("test_prop true\n")}
+    new_server config_path, true
+    @server.start
+
+    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    getaddress('test_role.changing.chef').should == '1.1.1.1'
+    Chef::Config.test_prop.should == true
+
+    sleep 2
+    File.open(knife_path, 'w') {|f| f.write("test_prop false\n")}
+    sleep 2
+
+    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    getaddress('test_role.changing.chef').should == '1.1.1.1'
+    Chef::Config.test_prop.should == false
+  end
 end
