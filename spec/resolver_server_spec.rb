@@ -23,16 +23,20 @@ describe Chef::ResolverServer do
 
   def getaddress host
     unless @resolver
-      klass = Class.new(Resolv::DNS::Config) do
-        def nameserver_port
-          lazy_initialize
-          @nameserver_port ||= [['127.0.0.1', TESTING_DNS_PORT]]
-          @nameserver_port
+      if RUBY_VERSION.split('.')[0...2] == ['1', '8']
+        klass = Class.new(Resolv::DNS::Config) do
+          def nameserver_port
+            lazy_initialize
+            @nameserver_port ||= [['127.0.0.1', TESTING_DNS_PORT]]
+            @nameserver_port
+          end
         end
+        config = klass.new(:nameserver => ['127.0.0.1'])
+        @resolver = Resolv::DNS.new
+        @resolver.instance_variable_set('@config', config)
+      else
+        @resolver = Resolv::DNS.new :nameserver_port => [['127.0.0.1', TESTING_DNS_PORT]]
       end
-      config = klass.new(:nameserver => ['127.0.0.1'])
-      @resolver = Resolv::DNS.new
-      @resolver.instance_variable_set('@config', config)
     end
     return @resolver.getaddress(host).to_s
   end
@@ -45,6 +49,7 @@ describe Chef::ResolverServer do
 
   after :each do
     stop_server
+    sleep 1
     Chef::Config.configuration = @default_config.dup
   end
 
