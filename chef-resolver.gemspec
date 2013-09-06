@@ -12,7 +12,7 @@ Gem::Specification.new do |gem|
   gem.summary       = %q{Instead of doing knife search node role every time you want to look up a server, simply ssh into ROLE_NAME-##.chef}
   gem.homepage      = "https://github.com/warhammerkid/chef-resolver"
 
-  gem.add_dependency('chef', '~> 10.16')
+  gem.add_dependency('chef', '~> 11.6')
 
   gem.files         = `git ls-files`.split($/)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
