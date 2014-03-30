@@ -25,6 +25,7 @@ if ARGV[0] == 'install'
 # # Access with role.config_name.chef
 # config_name:
 #   knife_file: /full/path/to/knife.rb
+#   search_extra: 'role:production' # optional
 #   env: # optional
 #     CHEF_ENV: production
 DEFAULT_CONFIG

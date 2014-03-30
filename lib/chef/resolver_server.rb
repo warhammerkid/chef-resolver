@@ -96,7 +96,15 @@ class Chef
       load_chef_config config
 
       puts "\tLooking up role #{role}..."
-      nodes = Chef::Search::Query.new.search('node', "role:#{role}")[0]
+
+      # Build search string
+      search = "role:#{role}"
+      if config.key?('search_extra')
+        search = "(#{config['search_extra']}) AND #{search}"
+      end
+
+      # Find the nodes
+      nodes = Chef::Search::Query.new.search('node', search)[0]
       if index >= nodes.length
         puts "\tIndex beyond bounds: #{index} vs #{nodes.length}"
         return nil

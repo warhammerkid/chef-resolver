@@ -14,10 +14,10 @@ describe Chef::ResolverServer do
     @server = nil
   end
 
-  def stub_search role, nodes
+  def stub_search search, nodes
     query = double('Chef::Search::Query')
     nodes.each_with_index {|n, i| n['name'] = "node #{i}" }
-    query.should_receive(:search).with('node', "role:#{role}").and_return([nodes, 0, nodes.length])
+    query.should_receive(:search).with('node', search).and_return([nodes, 0, nodes.length])
     Chef::Search::Query.should_receive(:new) { query }
   end
 
@@ -45,6 +45,7 @@ describe Chef::ResolverServer do
     @default_config = Chef::Config.configuration
     @test_config = {'knife_file' => File.dirname(__FILE__)+'/files/test_knife.rb'}
     @test2_config = {'knife_file' => File.dirname(__FILE__)+'/files/test2_knife.rb', 'env' => {'ENV_PROP' => 'test2'}}
+    @test3_config = {'knife_file' => File.dirname(__FILE__)+'/files/test_knife.rb', 'search_extra' => 'role:staging'}
   end
 
   after :each do
@@ -84,14 +85,21 @@ describe Chef::ResolverServer do
   it "should resolve a name like ROLE.CONFIG.chef" do
     new_server 'test' => @test_config, 'test2' => @test2_config
     @server.start
-    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.test2.chef').should == '1.1.1.1'
+  end
+
+  it "should use the search_extra if given for lookups" do
+    new_server 'test3' => @test3_config
+    @server.start
+    stub_search '(role:staging) AND role:test_role',  [{'ipaddress' => '1.1.1.1'}]
+    getaddress('test_role.test3.chef').should == '1.1.1.1'
   end
 
   it "should resolve a name like ROLE-INDEX.CONFIG.chef" do
     new_server 'test' => @test_config
     @server.start
-    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}, {'ipaddress' => '2.2.2.2'}, {'ipaddress' => '3.3.3.3'}, {'ipaddress' => '4.4.4.4'}]
+    stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}, {'ipaddress' => '2.2.2.2'}, {'ipaddress' => '3.3.3.3'}, {'ipaddress' => '4.4.4.4'}]
     getaddress('test_role-3.test.chef').should == '3.3.3.3'
   end
 
@@ -105,7 +113,7 @@ describe Chef::ResolverServer do
     # Should succeed with one config
     new_server 'test' => @test_config
     @server.start
-    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.chef').should == '1.1.1.1'
   end
 
@@ -118,7 +126,7 @@ describe Chef::ResolverServer do
   it "should resolve ec2 node public ip addresses properly" do
     new_server 'test' => @test_config
     @server.start
-    stub_search 'test_role', [{'ec2' => {'public_ipv4' => '1.1.1.1'}, 'ipaddress' => '0.0.0.0'}]
+    stub_search 'role:test_role', [{'ec2' => {'public_ipv4' => '1.1.1.1'}, 'ipaddress' => '0.0.0.0'}]
     getaddress('test_role.chef').should == '1.1.1.1'
   end
 
@@ -127,7 +135,7 @@ describe Chef::ResolverServer do
     File.open(path, 'w') {|f| f.write({'test' => @test_config}.to_yaml)}
     new_server path
     @server.start
-    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.chef').should == '1.1.1.1'
   end
 
@@ -142,7 +150,7 @@ describe Chef::ResolverServer do
     sleep 2
 
     expect { getaddress('test_role.test.chef') }.to raise_error(Resolv::ResolvError)
-    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.test2.chef').should == '1.1.1.1'
   end
 
@@ -154,7 +162,7 @@ describe Chef::ResolverServer do
     new_server config_path, true
     @server.start
 
-    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.changing.chef').should == '1.1.1.1'
     Chef::Config.test_prop.should == true
 
@@ -162,7 +170,7 @@ describe Chef::ResolverServer do
     File.open(knife_path, 'w') {|f| f.write("test_prop false\n")}
     sleep 2
 
-    stub_search 'test_role', [{'ipaddress' => '1.1.1.1'}]
+    stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.changing.chef').should == '1.1.1.1'
     Chef::Config.test_prop.should == false
   end
