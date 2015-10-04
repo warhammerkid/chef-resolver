@@ -46,6 +46,7 @@ describe Chef::ResolverServer do
     @test_config = {'knife_file' => File.dirname(__FILE__)+'/files/test_knife.rb'}
     @test2_config = {'knife_file' => File.dirname(__FILE__)+'/files/test2_knife.rb', 'env' => {'ENV_PROP' => 'test2'}}
     @test3_config = {'knife_file' => File.dirname(__FILE__)+'/files/test_knife.rb', 'search_extra' => 'role:staging'}
+    @vpn_config = {'knife_file' => File.dirname(__FILE__)+'/files/test_knife.rb', 'use_private_ip' => true}
   end
 
   after :each do
@@ -123,13 +124,6 @@ describe Chef::ResolverServer do
     expect { getaddress('test_role.test2.chef') }.to raise_error(Resolv::ResolvError)
   end
 
-  it "should resolve ec2 node public ip addresses properly" do
-    new_server 'test' => @test_config
-    @server.start
-    stub_search 'role:test_role', [{'ec2' => {'public_ipv4' => '1.1.1.1'}, 'ipaddress' => '0.0.0.0'}]
-    getaddress('test_role.chef').should == '1.1.1.1'
-  end
-
   it "should support a file path" do
     path = File.dirname(__FILE__)+'/files/changing_config.yml'
     File.open(path, 'w') {|f| f.write({'test' => @test_config}.to_yaml)}
@@ -173,5 +167,21 @@ describe Chef::ResolverServer do
     stub_search 'role:test_role', [{'ipaddress' => '1.1.1.1'}]
     getaddress('test_role.changing.chef').should == '1.1.1.1'
     Chef::Config.test_prop.should == false
+  end
+
+  describe "#calculate_node_ip" do
+    it "should prefer cloud ip addresses over ipaddress field" do
+      new_server 'test' => @test_config
+      @server.start
+      stub_search 'role:test_role', [{'cloud' => {'public_ipv4' => '1.1.1.1'}, 'ipaddress' => '0.0.0.0'}]
+      getaddress('test_role.chef').should == '1.1.1.1'
+    end
+
+    it "should prefer cloud ip addresses over ipaddress field with use_private_ip" do
+      new_server 'test' => @vpn_config
+      @server.start
+      stub_search 'role:test_role', [{'cloud' => {'local_ipv4' => '1.1.1.1'}, 'ipaddress' => '0.0.0.0'}]
+      getaddress('test_role.chef').should == '1.1.1.1'
+    end
   end
 end

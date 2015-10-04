@@ -111,8 +111,21 @@ class Chef
       else
         node = nodes[index]
         puts "\tFound node: #{node['name']}"
-        return node.has_key?('ec2') ? node['ec2']['public_ipv4'] : node['ipaddress']
+        return calculate_node_ip(node, config)
       end
+    end
+
+    def calculate_node_ip node, config
+      ip = if node.has_key?('cloud')
+        if config['use_private_ip']
+          node['cloud']['local_ipv4']
+        else
+          node['cloud']['public_ipv4']
+        end
+      else
+        node['ipaddress']
+      end
+      ip.is_a?(Array) ? ip.first : ip
     end
 
     def process_requests
